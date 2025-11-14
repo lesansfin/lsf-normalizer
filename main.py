@@ -10,30 +10,32 @@ import httpx
 
 app = FastAPI()
 
-SHOPIFY_SECRET = os.environ.get("SHOPIFY_SECRET", "")
-SHOPIFY_API_TOKEN = os.environ.get("SHOPIFY_API_TOKEN", "")
-SHOPIFY_STORE_DOMAIN = os.environ.get("SHOPIFY_STORE_DOMAIN", "")  # e.g. "yourstore.myshopify.com"
-
+SHOPIFY_SECRET = os.environ.get("SHOPIFY_SECRET", "")  # Webhook signing secret (hex string from Webhooks UI)
+SHOPIFY_API_TOKEN = os.environ.get("SHOPIFY_API_TOKEN", "")  # Admin API access token (shpat_...)
+SHOPIFY_STORE_DOMAIN = os.environ.get("SHOPIFY_STORE_DOMAIN", "")  # e.g. "hq1p0n-cm.myshopify.com"
 
 # ---------- UTILITIES ----------
 
 def verify_shopify_hmac(request_body: bytes, hmac_header: str) -> bool:
     """Verify webhook came from Shopify."""
+    if not SHOPIFY_SECRET:
+        # Fail closed if secret missing
+        return False
+
     digest = hmac.new(
         SHOPIFY_SECRET.encode("utf-8"),
         request_body,
-        hashlib.sha256
+        hashlib.sha256,
     ).digest()
     calculated_hmac = base64.b64encode(digest).decode()
     return hmac.compare_digest(calculated_hmac, hmac_header)
 
 
-# ---- VERY SIMPLE PLACEHOLDER EXTRACTORS (you'll expand these) ----
+# ---- VERY SIMPLE PLACEHOLDER EXTRACTORS (to be expanded later) ----
 
 def extract_designer(text: str) -> str:
     text_l = text.lower()
 
-    # very tiny subset as example; you’ll paste in full map later
     DESIGNER_SYNONYMS = {
         "ysl": "Yves Saint Laurent",
         "yves saint laurent": "Yves Saint Laurent",
@@ -83,16 +85,16 @@ def extract_condition(text: str) -> str | None:
 
 
 COLORS = [
-    "Black", "White", "Ivory", "Cream", "Beige", "Tan", "Brown", "Navy", "Blue",
-    "Red", "Pink", "Green", "Yellow", "Orange", "Purple", "Grey", "Silver",
-    "Gold", "Burgundy", "Maroon", "Camel", "Off-white", "Ecru", "Taupe"
-    # (you'll swap this with your full list)
+    "Black", "White", "Ivory", "Cream", "Beige", "Tan", "Brown",
+    "Navy", "Blue", "Red", "Pink", "Green", "Yellow", "Orange",
+    "Purple", "Grey", "Silver", "Gold", "Burgundy", "Maroon",
+    "Camel", "Off-white", "Ecru", "Taupe",
 ]
 
 
 def extract_colors(text: str) -> list[str]:
     t = text.lower()
-    found = []
+    found: list[str] = []
     for c in COLORS:
         if c.lower() in t:
             found.append(c)
@@ -101,10 +103,10 @@ def extract_colors(text: str) -> list[str]:
 
 
 MEASUREMENT_PATTERN = re.compile(
-    r"(bust|chest|p2p|pit to pit|underarm to underarm|armpit to armpit|waist|hips?|length|sleeve(?: length)?|rise|inseam)[^\d]{0,10}(\d+(\.\d+)?)\s*(cm|in|\"|inch|inches)?",
-    re.IGNORECASE
+    r"(bust|chest|p2p|pit to pit|underarm to underarm|armpit to armpit|waist|hips?|length|sleeve(?: length)?|rise|inseam)"
+    r"[^\d]{0,10}(\d+(\.\d+)?)\s*(cm|in|\"|inch|inches)?",
+    re.IGNORECASE,
 )
-
 
 MEASUREMENT_KEYS = {
     "bust": ["bust", "chest", "p2p", "pit to pit", "underarm to underarm", "armpit to armpit"],
@@ -127,7 +129,7 @@ def normalize_measurement_label(label: str) -> str | None:
 
 
 def extract_measurements(text: str) -> dict:
-    result = {}
+    result: dict[str, float] = {}
     for match in MEASUREMENT_PATTERN.finditer(text):
         label_raw = match.group(1)
         value = float(match.group(2))
@@ -158,6 +160,7 @@ def extract_type(text: str) -> str | None:
         "top": "Top",
     }
 
+    # longest phrases first so "mini dress" wins over "dress"
     for phrase in sorted(TYPE_SYNONYMS.keys(), key=len, reverse=True):
         if phrase in t:
             return TYPE_SYNONYMS[phrase]
@@ -183,17 +186,16 @@ def extract_materials(text: str) -> list[str]:
     t = text.lower()
     materials = [
         "cotton", "linen", "silk", "wool", "cashmere", "alpaca", "mohair", "polyester",
-        "nylon", "viscose", "rayon", "denim", "leather", "suede", "velvet", "satin"
-        # you’ll replace with your big material list
+        "nylon", "viscose", "rayon", "denim", "leather", "suede", "velvet", "satin",
     ]
-    found = []
+    found: list[str] = []
     for m in materials:
         if m in t:
             found.append(m.capitalize())
     return list(dict.fromkeys(found))
 
 
-def build_metafields_payload(product_id: int, text: str):
+def build_metafields_payload(product_id: int, text: str) -> dict:
     designer = extract_designer(text)
     condition = extract_condition(text)
     colors = extract_colors(text)
@@ -202,17 +204,19 @@ def build_metafields_payload(product_id: int, text: str):
     era = extract_era(text)
     materials = extract_materials(text)
 
-    metafields = []
+    metafields: list[dict] = []
 
-    def add_field(key, value, type_="single_line_text_field"):
+    def add_field(key: str, value, type_: str = "single_line_text_field"):
         if value is None:
             return
-        metafields.append({
-            "namespace": "lsf",
-            "key": key,
-            "type": type_,
-            "value": str(value)
-        })
+        metafields.append(
+            {
+                "namespace": "lsf",
+                "key": key,
+                "type": type_,
+                "value": str(value),
+            }
+        )
 
     add_field("designer", designer)
     add_field("condition", condition)
@@ -225,28 +229,42 @@ def build_metafields_payload(product_id: int, text: str):
     if materials:
         add_field("materials", ", ".join(materials))
 
-    # measurements numeric
+    # numeric measurements
     for key, val in measurements.items():
-        metafields.append({
-            "namespace": "lsf",
-            "key": f"measurements_{key}",
-            "type": "number_decimal",
-            "value": str(val)
-        })
+        metafields.append(
+            {
+                "namespace": "lsf",
+                "key": f"measurements_{key}",
+                "type": "number_decimal",
+                "value": str(val),
+            }
+        )
 
     return {"product_id": product_id, "metafields": metafields}
 
 
-async def write_metafields_to_shopify(payload: dict):
-    url = f"https://{SHOPIFY_STORE_DOMAIN}/admin/api/2024-01/metafields.json"
+async def write_metafields_to_shopify(product_id: int, metafields: list[dict]):
+    """
+    NOTE: Shopify's REST API creates product metafields at:
+    POST /admin/api/2024-01/products/{product_id}/metafields.json
+    one metafield at a time, not as a bulk list.
+    """
+    if not SHOPIFY_API_TOKEN or not SHOPIFY_STORE_DOMAIN:
+        print("Shopify credentials missing; skipping metafield write.")
+        return
+
+    base_url = f"https://{SHOPIFY_STORE_DOMAIN}/admin/api/2024-01/products/{product_id}/metafields.json"
     headers = {
         "X-Shopify-Access-Token": SHOPIFY_API_TOKEN,
         "Content-Type": "application/json",
     }
+
     async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(url, headers=headers, json=payload)
-        if resp.status_code >= 300:
-            print("Error from Shopify metafields:", resp.status_code, resp.text)
+        for mf in metafields:
+            payload = {"metafield": mf}
+            resp = await client.post(base_url, headers=headers, json=payload)
+            if resp.status_code >= 300:
+                print("Error from Shopify metafields:", resp.status_code, resp.text)
 
 
 # ---------- ROUTES ----------
@@ -258,12 +276,19 @@ def health():
 
 @app.post("/webhooks/products")
 async def handle_product_webhook(request: Request):
+    # 1) Get raw body exactly as Shopify sent it
     raw_body = await request.body()
-    hmac_header = request.headers.get("X-Shopify-Hmac-Sha256")
+
+    # 2) Get HMAC header (FastAPI lowercases headers internally, but access is case-insensitive)
+    hmac_header = request.headers.get("x-shopify-hmac-sha256")
     if not hmac_header or not verify_shopify_hmac(raw_body, hmac_header):
         raise HTTPException(status_code=401, detail="Invalid HMAC")
 
-    data = json.loads(raw_body.decode("utf-8"))
+    # 3) Parse JSON safely
+    try:
+        data = json.loads(raw_body.decode("utf-8"))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
 
     product_id = data.get("id")
     title = data.get("title") or ""
@@ -274,6 +299,11 @@ async def handle_product_webhook(request: Request):
     text = f"{title}\n{body_text}"
 
     metafields_payload = build_metafields_payload(product_id, text)
-    await write_metafields_to_shopify(metafields_payload)
+
+    # write metafields individually under the product
+    await write_metafields_to_shopify(
+        product_id=metafields_payload["product_id"],
+        metafields=metafields_payload["metafields"],
+    )
 
     return {"status": "processed"}
