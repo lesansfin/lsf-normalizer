@@ -77,19 +77,70 @@ DESIGNER_SYNONYMS = {
     "celine": "Céline",
     "jcrew": "Jcrew",
     "j crew": "Jcrew",
+    # Sub-brands and diffusion lines
+    "escada couture": "Escada",
+    "escada sport": "Escada",
+    "escada margaretha ley": "Escada",
+    "armani exchange": "Armani",
+    "emporio armani": "Armani",
+    "giorgio armani": "Armani",
+    "armani collezioni": "Armani",
+    "polo ralph lauren": "Ralph Lauren",
+    "ralph lauren collection": "Ralph Lauren",
+    "lauren ralph lauren": "Ralph Lauren",
+    "polo sport": "Ralph Lauren",
+    "dkny": "Donna Karan",
+    "donna karan new york": "Donna Karan",
+    "marc by marc jacobs": "Marc Jacobs",
+    "the marc jacobs": "Marc Jacobs",
+    "versus versace": "Versace",
+    "versace jeans": "Versace",
+    "versace collection": "Versace",
+    "miu miu": "Miu Miu",
+    "prada sport": "Prada",
+    "gucci": "Gucci",
+    "tom ford for gucci": "Gucci",
+    "mcq alexander mcqueen": "Alexander McQueen",
+    "alexander mcqueen": "Alexander McQueen",
+    "see by chloe": "Chloé",
+    "chloe": "Chloé",
+    "red valentino": "Valentino",
+    "valentino garavani": "Valentino",
+    "moschino cheap and chic": "Moschino",
+    "love moschino": "Moschino",
+    "missoni sport": "Missoni",
+    "m missoni": "Missoni",
+    "ck calvin klein": "Calvin Klein",
+    "calvin klein jeans": "Calvin Klein",
+    "calvin klein collection": "Calvin Klein",
+    "ckj": "Calvin Klein",
+    "vivienne westwood red label": "Vivienne Westwood",
+    "vivienne westwood anglomania": "Vivienne Westwood",
+    "burberry prorsum": "Burberry",
+    "burberry brit": "Burberry",
+    "burberry london": "Burberry",
+    "theory": "Theory",
+    "helmut lang": "Helmut Lang",
+    "max mara studio": "Max Mara",
+    "sportmax": "Max Mara",
+    "weekend max mara": "Max Mara",
 }
 
 def extract_designer(text: str) -> str:
     text_l = text.lower()
     
-    # Check synonyms first
+    # Check synonyms first (most specific)
     for syn, canonical in DESIGNER_SYNONYMS.items():
         if syn in text_l:
             return canonical
     
     # Check full designer names (case-insensitive)
-    for designer in DESIGNERS:
-        if designer.lower() in text_l:
+    # Sort by length (longest first) to match "Yves Saint Laurent" before "Saint Laurent"
+    for designer in sorted(DESIGNERS, key=len, reverse=True):
+        designer_lower = designer.lower()
+        # Check if designer name appears as a whole word or part of a phrase
+        # This catches "Escada Couture", "Polo Ralph Lauren", etc.
+        if designer_lower in text_l:
             return designer
     
     return "unbranded"
@@ -196,7 +247,27 @@ COLORS = [
     "Khaki", "Chartreuse", "Midnight Blue", "Denim Blue", "Periwinkle",
     "Indigo", "Slate", "Steel", "Gunmetal", "Ice Blue", "Butter",
     "Lemon", "Canary", "Sunflower", "Burnt Orange", "Bone", "Warm White",
-    "Cool White", "Graphite", "Smoke", "Dove Grey", "Heather Grey"
+    "Cool White", "Graphite", "Smoke", "Dove Grey", "Heather Grey",
+    # Additional color variations
+    "Eggplant", "Grape", "Mulberry", "Berry", "Cranberry", "Cherry",
+    "Crimson", "Scarlet", "Tomato", "Brick", "Cinnamon", "Ginger",
+    "Honey", "Amber", "Bronze", "Brass", "Marigold", "Saffron",
+    "Ochre", "Sienna", "Umber", "Espresso", "Walnut", "Cognac",
+    "Saddle", "Wheat", "Flax", "Straw", "Champagne", "Biscuit",
+    "Vanilla", "Oyster", "Pearl", "Porcelain", "Chalk", "Frost",
+    "Powder Blue", "Cerulean", "Azure", "Sapphire", "Denim",
+    "Peacock", "Aegean", "Ocean", "Marine", "Aqua", "Cyan",
+    "Pool", "Caribbean", "Jade", "Kelly Green", "Grass", "Clover",
+    "Moss", "Olive Drab", "Army Green", "Avocado", "Pear",
+    "Spring Green", "Neon Green", "Electric Blue", "Neon Pink",
+    "Shocking Pink", "Bubblegum", "Carnation", "Salmon", "Melon",
+    "Cantaloupe", "Papaya", "Mango", "Persimmon", "Pumpkin",
+    "Carrot", "Flame", "Blood Orange", "Vermillion", "Fire Red",
+    "Wine Red", "Oxblood", "Garnet", "Ruby", "Magenta",
+    "Orchid", "Mauve", "Wisteria", "Periwinkle", "Violet",
+    "Iris", "Amethyst", "Grape", "Eggplant", "Raisin",
+    "Charcoal Grey", "Ash", "Pewter", "Lead", "Iron",
+    "Nickel", "Titanium", "Platinum", "Chrome", "Mercury"
 ]
 
 
