@@ -195,14 +195,14 @@ def build_metafields_payload(product_id: int, text: str) -> dict:
 async def write_metafields_to_shopify(product_id: int, metafields: list[dict]):
     """
     NOTE: Shopify's REST API creates product metafields at:
-    POST /admin/api/2024-01/products/{product_id}/metafields.json
+    POST /admin/api/2025-10/products/{product_id}/metafields.json
     one metafield at a time, not as a bulk list.
     """
     if not SHOPIFY_API_TOKEN or not SHOPIFY_STORE_DOMAIN:
         print("Shopify credentials missing; skipping metafield write.")
         return
 
-    base_url = f"https://{SHOPIFY_STORE_DOMAIN}/admin/api/2024-01/products/{product_id}/metafields.json"
+    base_url = f"https://{SHOPIFY_STORE_DOMAIN}/admin/api/2025-10/products/{product_id}/metafields.json"
     headers = {
         "X-Shopify-Access-Token": SHOPIFY_API_TOKEN,
         "Content-Type": "application/json",
@@ -211,9 +211,12 @@ async def write_metafields_to_shopify(product_id: int, metafields: list[dict]):
     async with httpx.AsyncClient(timeout=15.0) as client:
         for mf in metafields:
             payload = {"metafield": mf}
+            print(f"Attempting to create metafield: {mf['key']} = {mf['value']}")
             resp = await client.post(base_url, headers=headers, json=payload)
             if resp.status_code >= 300:
-                print("Error from Shopify metafields:", resp.status_code, resp.text)
+                print(f"Error from Shopify metafields: {resp.status_code} {resp.text}")
+            else:
+                print(f"Successfully created metafield: {mf['key']}")
 
 
 # ---------- ROUTES ----------
@@ -230,7 +233,10 @@ async def handle_product_webhook(request: Request):
 
     # 2) Get HMAC header (FastAPI lowercases headers internally, but access is case-insensitive)
     hmac_header = request.headers.get("x-shopify-hmac-sha256")
+    
+    # Verify HMAC
     if not hmac_header or not verify_shopify_hmac(raw_body, hmac_header):
+        print("HMAC verification failed!")
         raise HTTPException(status_code=401, detail="Invalid HMAC")
 
     # 3) Parse JSON safely
