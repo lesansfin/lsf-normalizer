@@ -33,124 +33,384 @@ def verify_shopify_hmac(request_body: bytes, hmac_header: str) -> bool:
 
 # ---- EXTRACTORS ----
 
+# Comprehensive designer list
+DESIGNERS = [
+    "Yves Saint Laurent", "Christian Dior", "Cristóbal Balenciaga", "Pierre Cardin",
+    "André Courrèges", "Hubert de Givenchy", "Emanuel Ungaro", "Balmain", "Lanvin",
+    "Mary Quant", "Ossie Clark", "Biba", "Barbara Hulanicki", "Rudi Gernreich",
+    "Paco Rabanne", "Bonnie Cashin", "Geoffrey Beene", "Bill Blass", "Norman Norell",
+    "Anne Klein", "Pauline Trigère", "Halston", "Donald Brooks", "Diane von Fürstenberg",
+    "Calvin Klein", "Ralph Lauren", "Perry Ellis", "Stephen Burrows", "Karl Lagerfeld",
+    "Missoni", "Jean Muir", "Sonia Rykiel", "Kenzo Takada", "Issey Miyake",
+    "Kansai Yamamoto", "Zandra Rhodes", "Thierry Mugler", "Azzedine Alaïa", "Gucci",
+    "Hermès", "Céline", "Christian Lacroix", "Valentino", "Gianfranco Ferré",
+    "Versace", "Donatella Versace", "Armani", "Moschino", "Claude Montana",
+    "Jean Paul Gaultier", "Yohji Yamamoto", "Helmut Lang", "Jil Sander", "Miuccia Prada",
+    "Prada", "Miu Miu", "Narciso Rodriguez", "Ann Demeulemeester", "Jean Colonna",
+    "Tom Ford", "John Galliano", "Alexander McQueen", "Hussein Chalayan", "Martin Margiela",
+    "Romeo Gigli", "Marc Jacobs", "Kate Spade", "Anna Sui", "Isaac Mizrahi",
+    "Todd Oldham", "Betsey Johnson", "Vivienne Westwood", "Katharine Hamnett",
+    "Nicolas Ghesquière", "Phoebe Philo", "Stefano Pilati", "Alber Elbaz",
+    "Riccardo Tisci", "Stella McCartney", "Proenza Schouler", "Zac Posen",
+    "Jason Wu", "Phillip Lim", "Rodarte", "Tory Burch", "Derek Lam", "Vera Wang",
+    "Isabel Marant", "Junya Watanabe", "Roberto Cavalli", "Etro", "Raf Simons",
+    "Hedi Slimane", "Alessandro Michele", "Sarah Burton", "Maria Grazia Chiuri",
+    "Demna", "Jonathan Anderson", "Clare Waight Keller", "Virginie Viard",
+    "Simone Rocha", "Cecilie Bahnsen", "The Row", "Christopher Kane", "Jacquemus",
+    "Rosie Assoulin", "Ulla Johnson", "Mother of Pearl", "Ganni", "Sies Marjan",
+    "Virgil Abloh", "Yoon Ahn", "Marine Serre", "Heron Preston", "Shayne Oliver",
+    "Peter Do", "Khaite", "Catherine Holstein", "Tove", "Bode", "Emily Adams Bode",
+    "Wales Bonner", "Lemaire", "Nensi Dojaka", "Area", "LaQuan Smith",
+    "Christopher John Rogers", "KNWLS", "Dilara Fındıkoğlu", "Mugler",
+    "Casey Cadwallader", "Schiaparelli", "Daniel Roseberry", "Jcrew", "Donna Karan",
+    "Escada"
+]
+
+# Common abbreviations and alternatives
+DESIGNER_SYNONYMS = {
+    "ysl": "Yves Saint Laurent",
+    "saint laurent": "Yves Saint Laurent",
+    "dior": "Christian Dior",
+    "balenciaga": "Cristóbal Balenciaga",
+    "givenchy": "Hubert de Givenchy",
+    "hermes": "Hermès",
+    "celine": "Céline",
+    "jcrew": "Jcrew",
+    "j crew": "Jcrew",
+}
+
 def extract_designer(text: str) -> str:
     text_l = text.lower()
-
-    DESIGNER_SYNONYMS = {
-        "ysl": "Yves Saint Laurent",
-        "yves saint laurent": "Yves Saint Laurent",
-        "saint laurent": "Yves Saint Laurent",
-        "christian dior": "Christian Dior",
-        "dior": "Christian Dior",
-        "prada": "Prada",
-        "miu miu": "Miu Miu",
-        "hermes": "Hermès",
-        "hermès": "Hermès",
-    }
-
+    
+    # Check synonyms first
     for syn, canonical in DESIGNER_SYNONYMS.items():
         if syn in text_l:
             return canonical
-
+    
+    # Check full designer names (case-insensitive)
+    for designer in DESIGNERS:
+        if designer.lower() in text_l:
+            return designer
+    
     return "unbranded"
 
 
 CONDITION_MAP = {
+    # PRISTINE
     "new with tags": "PRISTINE",
     "nwt": "PRISTINE",
+    "new without tags": "PRISTINE",
+    "nwot": "PRISTINE",
     "never worn": "PRISTINE",
+    "perfect condition": "PRISTINE",
     "like new": "PRISTINE",
+    "no visible signs of wear": "PRISTINE",
     "mint condition": "PRISTINE",
     "deadstock": "PRISTINE",
+    "unused": "PRISTINE",
+    "store-fresh": "PRISTINE",
+    "pristine condition": "PRISTINE",
+    "immaculate": "PRISTINE",
+    "comes with original packaging": "PRISTINE",
+    "comes with dust bag": "PRISTINE",
+    "tried on only": "PRISTINE",
+    "worn once": "PRISTINE",
+    
+    # VERY GOOD
     "excellent condition": "VERY GOOD",
     "gently used": "VERY GOOD",
     "gently worn": "VERY GOOD",
     "light wear": "VERY GOOD",
     "minor signs of wear": "VERY GOOD",
+    "very minimal scuffing": "VERY GOOD",
+    "small hairline scratches": "VERY GOOD",
+    "slight fading": "VERY GOOD",
+    "light creasing": "VERY GOOD",
+    "minor surface wear": "VERY GOOD",
+    "clean overall": "VERY GOOD",
+    "great pre-owned condition": "VERY GOOD",
+    "well-maintained": "VERY GOOD",
+    "hardly worn": "VERY GOOD",
+    "looks almost new": "VERY GOOD",
+    
+    # GOOD
     "good used condition": "GOOD",
     "moderate wear": "GOOD",
+    "some signs of wear": "GOOD",
+    "visible wear but still in good shape": "GOOD",
+    "wear consistent with age": "GOOD",
+    "wear consistent with use": "GOOD",
+    "noticeable scuffs": "GOOD",
+    "moderate fading": "GOOD",
+    "moderate creasing": "GOOD",
+    "some scratching": "GOOD",
+    "used but well-kept": "GOOD",
+    "light pilling": "GOOD",
+    "slight stretching": "GOOD",
+    "small marks or stains": "GOOD",
     "normal vintage wear": "GOOD",
+    "still has lots of life left": "GOOD",
+    
+    # FAIR
     "fair condition": "FAIR",
     "heavily used": "FAIR",
+    "well-loved": "FAIR",
+    "significant wear": "FAIR",
+    "visible flaws": "FAIR",
+    "noticeable damage": "FAIR",
+    "has imperfections": "FAIR",
+    "repairs needed": "FAIR",
+    "heavy scuffing": "FAIR",
+    "significant fading": "FAIR",
+    "marked or stained": "FAIR",
+    "loose threads": "FAIR",
+    "missing embellishments": "FAIR",
+    "worn edges": "FAIR",
+    "cracked leather": "FAIR",
+    "sold as-is": "FAIR",
     "for restoration": "FAIR",
+    "still wearable but shows wear": "FAIR",
 }
 
 
 def extract_condition(text: str) -> str | None:
     t = text.lower()
-    for phrase, bucket in CONDITION_MAP.items():
+    # Sort by length (longest first) to catch specific phrases before generic ones
+    for phrase in sorted(CONDITION_MAP.keys(), key=len, reverse=True):
         if phrase in t:
-            return bucket
+            return CONDITION_MAP[phrase]
     return None
 
 
 COLORS = [
-    "Black", "White", "Ivory", "Cream", "Beige", "Tan", "Brown",
-    "Navy", "Blue", "Red", "Pink", "Green", "Yellow", "Orange",
-    "Purple", "Grey", "Silver", "Gold", "Burgundy", "Maroon",
-    "Camel", "Off-white", "Ecru", "Taupe",
+    "Black", "White", "Ivory", "Cream", "Beige", "Tan", "Brown", "Chocolate",
+    "Camel", "Navy", "Blue", "Light Blue", "Sky Blue", "Baby Blue", "Cobalt",
+    "Royal Blue", "Teal", "Turquoise", "Green", "Olive", "Forest Green",
+    "Hunter Green", "Mint", "Sage", "Yellow", "Mustard", "Gold", "Orange",
+    "Coral", "Red", "Burgundy", "Maroon", "Pink", "Blush", "Hot Pink",
+    "Magenta", "Purple", "Lavender", "Lilac", "Plum", "Grey", "Charcoal",
+    "Silver", "Off-white", "Ecru", "Oatmeal", "Stone", "Sand", "Mocha",
+    "Taupe", "Mahogany", "Chestnut", "Copper", "Rust", "Terracotta",
+    "Peach", "Apricot", "Tangerine", "Rose", "Dusty Rose", "Fuchsia",
+    "Aubergine", "Wine", "Emerald", "Lime", "Seafoam", "Pistachio",
+    "Khaki", "Chartreuse", "Midnight Blue", "Denim Blue", "Periwinkle",
+    "Indigo", "Slate", "Steel", "Gunmetal", "Ice Blue", "Butter",
+    "Lemon", "Canary", "Sunflower", "Burnt Orange", "Bone", "Warm White",
+    "Cool White", "Graphite", "Smoke", "Dove Grey", "Heather Grey"
 ]
 
 
 def extract_colors(text: str) -> list[str]:
     t = text.lower()
     found: list[str] = []
-    for c in COLORS:
+    # Sort by length (longest first) to match "Light Blue" before "Blue"
+    for c in sorted(COLORS, key=len, reverse=True):
         if c.lower() in t:
             found.append(c)
     # dedupe while preserving order
     return list(dict.fromkeys(found))
 
 
+# Product types - sorted longest first for matching
+PRODUCT_TYPES = {
+    # Dresses
+    "babydoll dress": "Babydoll dress",
+    "bodycon dress": "Bodycon dress",
+    "cocktail dress": "Cocktail dress",
+    "empire waist dress": "Empire waist dress",
+    "evening gown": "Evening gown",
+    "fit-and-flare dress": "Fit-and-flare dress",
+    "halter dress": "Halter dress",
+    "kaftan dress": "Kaftan dress",
+    "maxi dress": "Maxi dress",
+    "midi dress": "Midi dress",
+    "mini dress": "Mini dress",
+    "one-shoulder dress": "One-shoulder dress",
+    "shirt dress": "Shirt dress",
+    "sheath dress": "Sheath dress",
+    "shift dress": "Shift dress",
+    "slip dress": "Slip dress",
+    "sun dress": "Sun dress",
+    "sweater dress": "Sweater dress",
+    "wrap dress": "Wrap dress",
+    "a-line dress": "A-line dress",
+    "backless dress": "Backless dress",
+    "gown": "Gown",
+    "dress": "Dress",
+    
+    # Tops
+    "button-down shirt": "Button-down shirt",
+    "off-the-shoulder top": "Off-the-shoulder top",
+    "one-shoulder top": "One-shoulder top",
+    "crop top": "Crop top",
+    "tube top": "Tube top",
+    "wrap top": "Wrap top",
+    "corset top": "Corset top",
+    "peplum top": "Peplum top",
+    "halter top": "Halter top",
+    "shell top": "Shell top",
+    "knit top": "Knit top",
+    "tank top": "Tank top",
+    "t-shirt": "T-shirt",
+    "camisole": "Camisole",
+    "blouse": "Blouse",
+    "polo shirt": "Polo shirt",
+    "tunic": "Tunic",
+    "sweater": "Sweater",
+    "cardigan": "Cardigan",
+    "bodysuit": "Bodysuit",
+    "sweatshirt": "Sweatshirt",
+    "hoodie": "Hoodie",
+    "vest": "Vest",
+    "bustier": "Bustier",
+    "bralette": "Bralette",
+    "top": "Top",
+    
+    # Outerwear
+    "trench coat": "Trench coat",
+    "peacoat": "Peacoat",
+    "duster coat": "Duster coat",
+    "car coat": "Car coat",
+    "puffer jacket": "Puffer jacket",
+    "quilted jacket": "Quilted jacket",
+    "bomber jacket": "Bomber jacket",
+    "leather jacket": "Leather jacket",
+    "denim jacket": "Denim jacket",
+    "moto jacket": "Moto jacket",
+    "wool coat": "Wool coat",
+    "fur coat": "Fur coat",
+    "suit jacket": "Suit jacket",
+    "blazer": "Blazer",
+    "overcoat": "Overcoat",
+    "cape": "Cape",
+    "poncho": "Poncho",
+    "raincoat": "Raincoat",
+    "windbreaker": "Windbreaker",
+    "parka": "Parka",
+    "jacket": "Jacket",
+    "coat": "Coat",
+    
+    # Bottoms
+    "wide-leg pants": "Wide-leg pants",
+    "straight-leg pants": "Straight-leg pants",
+    "skinny pants": "Skinny pants",
+    "palazzo pants": "Palazzo pants",
+    "harem pants": "Harem pants",
+    "dress pants": "Dress pants",
+    "cargo pants": "Cargo pants",
+    "bermuda shorts": "Bermuda shorts",
+    "denim shorts": "Denim shorts",
+    "jeans": "Jeans",
+    "trousers": "Trousers",
+    "sweatpants": "Sweatpants",
+    "joggers": "Joggers",
+    "leggings": "Leggings",
+    "culottes": "Culottes",
+    "capris": "Capris",
+    "shorts": "Shorts",
+    "skort": "Skort",
+    
+    # Skirts
+    "mini skirt": "Mini skirt",
+    "midi skirt": "Midi skirt",
+    "maxi skirt": "Maxi skirt",
+    "pencil skirt": "Pencil skirt",
+    "a-line skirt": "A-line skirt",
+    "pleated skirt": "Pleated skirt",
+    "slip skirt": "Slip skirt",
+    "wrap skirt": "Wrap skirt",
+    "circle skirt": "Circle skirt",
+    "tiered skirt": "Tiered skirt",
+    "denim skirt": "Denim skirt",
+    "leather skirt": "Leather skirt",
+    "skirt": "Skirt",
+}
+
+
 def extract_type(text: str) -> str | None:
     t = text.lower()
-
-    TYPE_SYNONYMS = {
-        "mini dress": "Mini dress",
-        "midi dress": "Midi dress",
-        "maxi dress": "Maxi dress",
-        "dress": "Dress",
-        "blazer": "Blazer",
-        "jeans": "Jeans",
-        "skirt": "Skirt",
-        "trousers": "Trousers",
-        "coat": "Coat",
-        "jacket": "Jacket",
-        "top": "Top",
-    }
-
-    # longest phrases first so "mini dress" wins over "dress"
-    for phrase in sorted(TYPE_SYNONYMS.keys(), key=len, reverse=True):
+    # Sorted by length to match specific types before generic
+    for phrase in sorted(PRODUCT_TYPES.keys(), key=len, reverse=True):
         if phrase in t:
-            return TYPE_SYNONYMS[phrase]
+            return PRODUCT_TYPES[phrase]
     return None
 
 
 def extract_era(text: str) -> str | None:
     t = text.lower()
-    if any(x in t for x in ["1960s", "60s", "sixties", "mod era", "twiggy"]):
+    
+    # Check for specific eras
+    if any(x in t for x in ["1960s", "60s", "sixties", "mod era", "youthquake", "space age", "vintage 60s", "twiggy"]):
         return "1960s"
-    if any(x in t for x in ["1970s", "70s", "seventies", "boho era", "disco era", "studio 54"]):
+    if any(x in t for x in ["1970s", "70s", "seventies", "disco era", "boho era", "hippie era", "studio 54", "vintage 70s"]):
         return "1970s"
-    if any(x in t for x in ["1980s", "80s", "eighties", "power dressing"]):
+    if any(x in t for x in ["1980s", "80s", "eighties", "power dressing", "shoulder pad era", "vintage 80s", "new wave"]):
         return "1980s"
-    if any(x in t for x in ["1990s", "90s", "nineties", "grunge", "minimalist era"]):
+    if any(x in t for x in ["1990s", "90s", "nineties", "grunge", "minimalist era", "supermodel era", "vintage 90s"]):
         return "1990s"
-    if any(x in t for x in ["y2k", "2000s", "00s", "mcbling"]):
+    if any(x in t for x in ["y2k", "2000s", "00s", "early 2000s", "mcbling", "millennium fashion", "paris hilton era"]):
         return "2000s / Y2K"
+    if any(x in t for x in ["2010s", "10s", "early 2010s", "normcore", "athleisure"]):
+        return "2010s"
+    
+    # Check for seasons
+    if any(x in t for x in ["spring/summer", "spring summer", "s/s", "ss", "resort", "cruise"]):
+        return "Spring/Summer"
+    if any(x in t for x in ["fall/winter", "fall winter", "f/w", "fw", "autumn/winter"]):
+        return "Fall/Winter"
+    
     return None
+
+
+MATERIALS = [
+    "Organic cotton", "Pima cotton", "Supima cotton", "Cotton",
+    "Flax", "Linen", "Hemp",
+    "Mulberry silk", "Charmeuse", "Chiffon", "Organza", "Crepe de chine",
+    "Twill silk", "Silk",
+    "Crushed velvet", "Silk velvet", "Velvet",
+    "Satin",
+    "Modal", "Lyocell", "Tencel", "Cupro", "Viscose", "Rayon",
+    "Bamboo", "Acetate",
+    "Recycled polyester", "Polyester",
+    "Recycled nylon", "Nylon",
+    "Spandex", "Elastane", "Lycra",
+    "Acrylic", "Polyamide", "Polyurethane",
+    "Vegan leather", "Faux leather", "PU leather", "Bonded leather",
+    "Cowhide", "Sheepskin", "Lambskin", "Goatskin", "Pigskin",
+    "Leather", "Suede", "Nubuck", "Patent leather",
+    "Shearling",
+    "Merino wool", "Cashmere", "Mongolian cashmere", "Alpaca",
+    "Mohair", "Angora", "Camel hair", "Yak wool", "Wool",
+    "Tweed", "Bouclé", "Felted wool",
+    "Cotton jersey", "Wool jersey", "Silk jersey", "Jersey",
+    "Rib knit", "Chunky knit", "Cable knit", "Pointelle", "Knit",
+    "Sherpa", "Fleece",
+    "French terry", "Terry cloth",
+    "Neoprene", "Power mesh", "Mesh",
+    "Tulle", "Guipure lace", "Embroidered lace", "Lace",
+    "Broderie anglaise", "Eyelet",
+    "Brocade", "Jacquard",
+    "Raw denim", "Stretch denim", "Denim",
+    "Corduroy", "Canvas", "Poplin", "Twill", "Gabardine",
+    "Crepe", "Georgette", "Scuba",
+    "Sequins", "Beaded", "Embellished",
+    "Metallic fabric", "Lamé", "Foil fabric",
+    "Leatherette", "Rubber", "PVC", "Vinyl", "Plastic",
+    "Raffia", "Jute", "Straw", "Wicker",
+    "Patent synthetic", "Microfiber",
+    "Gore-Tex", "Softshell",
+    "Down", "Feathers",
+    "Fox fur", "Mink fur", "Rabbit fur", "Raccoon fur", "Faux fur",
+]
 
 
 def extract_materials(text: str) -> list[str]:
     t = text.lower()
-    materials = [
-        "cotton", "linen", "silk", "wool", "cashmere", "alpaca", "mohair", "polyester",
-        "nylon", "viscose", "rayon", "denim", "leather", "suede", "velvet", "satin",
-    ]
     found: list[str] = []
-    for m in materials:
-        if m in t:
-            found.append(m.capitalize())
+    # Sort by length to match specific materials before generic
+    for m in sorted(MATERIALS, key=len, reverse=True):
+        if m.lower() in t:
+            found.append(m)
     return list(dict.fromkeys(found))
 
 
