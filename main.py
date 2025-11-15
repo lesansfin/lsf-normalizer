@@ -31,7 +31,7 @@ def verify_shopify_hmac(request_body: bytes, hmac_header: str) -> bool:
     return hmac.compare_digest(calculated_hmac, hmac_header)
 
 
-# ---- VERY SIMPLE PLACEHOLDER EXTRACTORS (to be expanded later) ----
+# ---- EXTRACTORS ----
 
 def extract_designer(text: str) -> str:
     text_l = text.lower()
@@ -102,47 +102,6 @@ def extract_colors(text: str) -> list[str]:
     return list(dict.fromkeys(found))
 
 
-MEASUREMENT_PATTERN = re.compile(
-    r"(bust|chest|p2p|pit to pit|underarm to underarm|armpit to armpit|waist|hips?|length|sleeve(?: length)?|rise|inseam)"
-    r"[^\d]{0,10}(\d+(\.\d+)?)\s*(cm|in|\"|inch|inches)?",
-    re.IGNORECASE,
-)
-
-MEASUREMENT_KEYS = {
-    "bust": ["bust", "chest", "p2p", "pit to pit", "underarm to underarm", "armpit to armpit"],
-    "waist": ["waist"],
-    "hips": ["hips", "hip"],
-    "length": ["length"],
-    "sleeve_length": ["sleeve length", "sleeve"],
-    "rise": ["rise"],
-    "inseam": ["inseam"],
-}
-
-
-def normalize_measurement_label(label: str) -> str | None:
-    l = label.lower()
-    for canonical, synonyms in MEASUREMENT_KEYS.items():
-        for s in synonyms:
-            if s in l:
-                return canonical
-    return None
-
-
-def extract_measurements(text: str) -> dict:
-    result: dict[str, float] = {}
-    for match in MEASUREMENT_PATTERN.finditer(text):
-        label_raw = match.group(1)
-        value = float(match.group(2))
-        unit = match.group(4) or "in"
-        key = normalize_measurement_label(label_raw)
-        if not key:
-            continue
-        if unit.lower().startswith("cm"):
-            value = round(value / 2.54, 2)
-        result[key] = value
-    return result
-
-
 def extract_type(text: str) -> str | None:
     t = text.lower()
 
@@ -199,7 +158,6 @@ def build_metafields_payload(product_id: int, text: str) -> dict:
     designer = extract_designer(text)
     condition = extract_condition(text)
     colors = extract_colors(text)
-    measurements = extract_measurements(text)
     ptype = extract_type(text)
     era = extract_era(text)
     materials = extract_materials(text)
@@ -211,34 +169,25 @@ def build_metafields_payload(product_id: int, text: str) -> dict:
             return
         metafields.append(
             {
-                "namespace": "lsf",
+                "namespace": "custom",
                 "key": key,
                 "type": type_,
                 "value": str(value),
             }
         )
 
+    # Match your metafield definitions
     add_field("designer", designer)
-    add_field("condition", condition)
+    add_field("condition_rating", condition)
+    
     if colors:
-        add_field("primary_color", colors[0])
-        if len(colors) > 1:
-            add_field("secondary_color", colors[1])
-    add_field("type", ptype)
-    add_field("era_season", era)
+        add_field("color", colors[0])
+    
+    add_field("product_type", ptype)
+    add_field("season", era)
+    
     if materials:
-        add_field("materials", ", ".join(materials))
-
-    # numeric measurements
-    for key, val in measurements.items():
-        metafields.append(
-            {
-                "namespace": "lsf",
-                "key": f"measurements_{key}",
-                "type": "number_decimal",
-                "value": str(val),
-            }
-        )
+        add_field("material", ", ".join(materials))
 
     return {"product_id": product_id, "metafields": metafields}
 
