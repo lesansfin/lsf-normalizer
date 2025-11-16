@@ -63,7 +63,36 @@ DESIGNERS = [
     "Wales Bonner", "Lemaire", "Nensi Dojaka", "Area", "LaQuan Smith",
     "Christopher John Rogers", "KNWLS", "Dilara Fındıkoğlu", "Mugler",
     "Casey Cadwallader", "Schiaparelli", "Daniel Roseberry", "Jcrew", "Donna Karan",
-    "Escada"
+    "Escada", "Burberry", "Chloé", "Max Mara", "Theory",
+    # Foundational / Couture (30s–70s)
+    "Madeleine Vionnet", "Elsa Schiaparelli", "Jean Patou", "Jeanne Lanvin",
+    "Nina Ricci", "Carven", "Madame Grès", "Paul Poiret", "Mainbocher",
+    "Jacques Fath", "Guy Laroche", "Courrèges",
+    # American Sportswear Legends
+    "Liz Claiborne", "Anne Fogarty", "Lilli Ann", "Adrienne Vittadini",
+    "Stephen Sprouse", "Giorgio di Sant'Angelo", "Janice Wainwright",
+    # Italian 70s–90s Powerhouses
+    "Fendi", "Trussardi", "Krizia", "Sportmax", "Genny", "Gianni Versace",
+    "Fiorucci", "Miss Deanna", "Blumarine", "Brioni", "Laura Biagiotti",
+    "Emilio Pucci",
+    # Japanese Avant-Garde
+    "Matsuda", "Comme des Garçons", "Tsumori Chisato",
+    # Antwerp / European 80s–90s Designers
+    "Dries Van Noten", "Dirk Bikkembergs", "Walter Van Beirendonck",
+    "Patrick Van Ommeslaeghe",
+    # London Designers (70s–90s)
+    "Hardy Amies", "Bruce Oldfield", "Jasper Conran", "Bella Freud",
+    "Matthew Williamson", "Ozwald Boateng", "John Richmond",
+    # Indie / Cult Vintage Labels
+    "Margaret Howell", "A.P.C.", "Acne Studios", "Rick Owens",
+    "Jean-Charles de Castelbajac",
+    # Accessories & Leather Houses
+    "Delvaux", "Loewe", "Mulberry", "Coach", "Bally", "Ferragamo",
+    # Scandi & Minimalist
+    "Filippa K", "Tiger of Sweden", "Weekday",
+    # Y2K / 2000s Designers
+    "BCBG Max Azria", "Baby Phat", "Heatherette", "Anna Molinari", "DSquared2",
+    "Morgan de Toi",
 ]
 
 # Common abbreviations and alternatives
@@ -91,11 +120,13 @@ DESIGNER_SYNONYMS = {
     "polo sport": "Ralph Lauren",
     "dkny": "Donna Karan",
     "donna karan new york": "Donna Karan",
+    "dkny jeans": "Donna Karan",
     "marc by marc jacobs": "Marc Jacobs",
     "the marc jacobs": "Marc Jacobs",
     "versus versace": "Versace",
     "versace jeans": "Versace",
     "versace collection": "Versace",
+    "gianni versace": "Gianni Versace",
     "miu miu": "Miu Miu",
     "prada sport": "Prada",
     "gucci": "Gucci",
@@ -103,10 +134,12 @@ DESIGNER_SYNONYMS = {
     "mcq alexander mcqueen": "Alexander McQueen",
     "alexander mcqueen": "Alexander McQueen",
     "see by chloe": "Chloé",
+    "see by chloé": "Chloé",
     "chloe": "Chloé",
     "red valentino": "Valentino",
     "valentino garavani": "Valentino",
     "moschino cheap and chic": "Moschino",
+    "moschino cheap & chic": "Moschino",
     "love moschino": "Moschino",
     "missoni sport": "Missoni",
     "m missoni": "Missoni",
@@ -115,6 +148,7 @@ DESIGNER_SYNONYMS = {
     "calvin klein collection": "Calvin Klein",
     "ckj": "Calvin Klein",
     "vivienne westwood red label": "Vivienne Westwood",
+    "vivienne westwood gold label": "Vivienne Westwood",
     "vivienne westwood anglomania": "Vivienne Westwood",
     "burberry prorsum": "Burberry",
     "burberry brit": "Burberry",
@@ -124,14 +158,39 @@ DESIGNER_SYNONYMS = {
     "max mara studio": "Max Mara",
     "sportmax": "Max Mara",
     "weekend max mara": "Max Mara",
+    # Japanese lines
+    "comme des garcons": "Comme des Garçons",
+    "cdg": "Comme des Garçons",
+    "comme des garçons homme plus": "Comme des Garçons",
+    "comme des garçons ganryu": "Comme des Garçons",
+    "comme des garçons tricot": "Comme des Garçons",
+    "issey miyake pleats please": "Issey Miyake",
+    "pleats please": "Issey Miyake",
+    "junya watanabe man": "Junya Watanabe",
+    # Y2K / Diffusion lines
+    "bcbg": "BCBG Max Azria",
+    "bcbg max azria": "BCBG Max Azria",
+    "roberto cavalli class": "Roberto Cavalli",
+    "just cavalli": "Roberto Cavalli",
+    "emanuel ungaro parallele": "Emanuel Ungaro",
+    "jil sander navy": "Jil Sander",
+    "kenzo jungle": "Kenzo Takada",
+    "ann demeulemeester menswear": "Ann Demeulemeester",
+    "romeo gigli menswear": "Romeo Gigli",
+    "dsquared2": "DSquared2",
+    "dsquared": "DSquared2",
 }
 
 def extract_designer(text: str) -> str:
     text_l = text.lower()
     
+    # Debug logging
+    print(f"[DEBUG] Searching for designer in: {text_l[:100]}...")
+    
     # Check synonyms first (most specific)
     for syn, canonical in DESIGNER_SYNONYMS.items():
         if syn in text_l:
+            print(f"[DEBUG] Found designer via synonym '{syn}' -> {canonical}")
             return canonical
     
     # Check full designer names (case-insensitive)
@@ -141,8 +200,10 @@ def extract_designer(text: str) -> str:
         # Check if designer name appears as a whole word or part of a phrase
         # This catches "Escada Couture", "Polo Ralph Lauren", etc.
         if designer_lower in text_l:
+            print(f"[DEBUG] Found designer in main list: {designer}")
             return designer
     
+    print(f"[DEBUG] No designer found, returning 'unbranded'")
     return "unbranded"
 
 
@@ -395,6 +456,159 @@ PRODUCT_TYPES = {
     "denim skirt": "Denim skirt",
     "leather skirt": "Leather skirt",
     "skirt": "Skirt",
+    
+    # Shoes - Heels
+    "ankle-strap heels": "Ankle-strap heels",
+    "slingback heels": "Slingback heels",
+    "peep-toe heels": "Peep-toe heels",
+    "platform heels": "Platform heels",
+    "t-strap heels": "T-strap heels",
+    "mary jane heels": "Mary Jane heels",
+    "d'orsay heels": "D'Orsay heels",
+    "block heels": "Block heels",
+    "kitten heels": "Kitten heels",
+    "wedge heels": "Wedge heels",
+    "stilettos": "Stilettos",
+    "pumps": "Pumps",
+    "mules": "Mules",
+    "heels": "Heels",
+    
+    # Shoes - Boots
+    "over-the-knee boots": "Over-the-knee boots",
+    "thigh-high boots": "Thigh-high boots",
+    "knee-high boots": "Knee-high boots",
+    "mid-calf boots": "Mid-calf boots",
+    "ankle boots": "Ankle boots",
+    "chelsea boots": "Chelsea boots",
+    "cowboy boots": "Cowboy boots",
+    "combat boots": "Combat boots",
+    "moto boots": "Moto boots",
+    "sock boots": "Sock boots",
+    "platform boots": "Platform boots",
+    "wedge boots": "Wedge boots",
+    "rain boots": "Rain boots",
+    "snow boots": "Snow boots",
+    "hiking boots": "Hiking boots",
+    "boots": "Boots",
+    
+    # Shoes - Flats
+    "mary jane flats": "Mary Jane flats",
+    "pointed-toe flats": "Pointed-toe flats",
+    "oxford flats": "Oxford flats",
+    "derby flats": "Derby flats",
+    "espadrille flats": "Espadrille flats",
+    "smoking slippers": "Smoking slippers",
+    "ballet flats": "Ballet flats",
+    "loafers": "Loafers",
+    "moccasins": "Moccasins",
+    "flats": "Flats",
+    
+    # Shoes - Sandals
+    "gladiator sandals": "Gladiator sandals",
+    "strappy sandals": "Strappy sandals",
+    "t-strap sandals": "T-strap sandals",
+    "fisherman sandals": "Fisherman sandals",
+    "espadrille sandals": "Espadrille sandals",
+    "platform sandals": "Platform sandals",
+    "wedge sandals": "Wedge sandals",
+    "flat sandals": "Flat sandals",
+    "thong sandals": "Thong sandals",
+    "flip-flops": "Flip-flops",
+    "slides": "Slides",
+    "sandals": "Sandals",
+    
+    # Shoes - Sneakers
+    "high-top sneakers": "High-top sneakers",
+    "low-top sneakers": "Low-top sneakers",
+    "platform sneakers": "Platform sneakers",
+    "slip-on sneakers": "Slip-on sneakers",
+    "dad sneakers": "Dad sneakers",
+    "chunky sneakers": "Chunky sneakers",
+    "running sneakers": "Running sneakers",
+    "fashion sneakers": "Fashion sneakers",
+    "court sneakers": "Court sneakers",
+    "canvas sneakers": "Canvas sneakers",
+    "sneakers": "Sneakers",
+    
+    # Shoes - Other
+    "platform clogs": "Platform clogs",
+    "mule heels": "Mule heels",
+    "mule flats": "Mule flats",
+    "shearling slippers": "Shearling slippers",
+    "house slippers": "House slippers",
+    "clogs": "Clogs",
+    "slippers": "Slippers",
+    
+    # Jewelry
+    "statement necklace": "Statement necklace",
+    "pendant necklace": "Pendant necklace",
+    "chain necklace": "Chain necklace",
+    "choker necklace": "Choker necklace",
+    "collar necklace": "Collar necklace",
+    "bib necklace": "Bib necklace",
+    "lariat necklace": "Lariat necklace",
+    "pearl necklace": "Pearl necklace",
+    "rope necklace": "Rope necklace",
+    "necklace": "Necklace",
+    "statement earrings": "Statement earrings",
+    "drop earrings": "Drop earrings",
+    "dangle earrings": "Dangle earrings",
+    "chandelier earrings": "Chandelier earrings",
+    "hoop earrings": "Hoop earrings",
+    "stud earrings": "Stud earrings",
+    "clip-on earrings": "Clip-on earrings",
+    "ear cuffs": "Ear cuffs",
+    "earrings": "Earrings",
+    "charm bracelet": "Charm bracelet",
+    "bangle bracelet": "Bangle bracelet",
+    "cuff bracelet": "Cuff bracelet",
+    "chain bracelet": "Chain bracelet",
+    "tennis bracelet": "Tennis bracelet",
+    "beaded bracelet": "Beaded bracelet",
+    "friendship bracelet": "Friendship bracelet",
+    "bracelet": "Bracelet",
+    "statement ring": "Statement ring",
+    "cocktail ring": "Cocktail ring",
+    "signet ring": "Signet ring",
+    "band ring": "Band ring",
+    "stackable ring": "Stackable ring",
+    "midi ring": "Midi ring",
+    "knuckle ring": "Knuckle ring",
+    "ring": "Ring",
+    "vintage brooch": "Vintage brooch",
+    "cameo brooch": "Cameo brooch",
+    "crystal brooch": "Crystal brooch",
+    "floral brooch": "Floral brooch",
+    "animal brooch": "Animal brooch",
+    "brooch": "Brooch",
+    "enamel pin": "Enamel pin",
+    "lapel pin": "Lapel pin",
+    "hat pin": "Hat pin",
+    "pin": "Pin",
+    
+    # Accessories
+    "statement belt": "Statement belt",
+    "chain belt": "Chain belt",
+    "leather belt": "Leather belt",
+    "wide belt": "Wide belt",
+    "skinny belt": "Skinny belt",
+    "obi belt": "Obi belt",
+    "corset belt": "Corset belt",
+    "belt": "Belt",
+    "silk scarf": "Silk scarf",
+    "cashmere scarf": "Cashmere scarf",
+    "wool scarf": "Wool scarf",
+    "pashmina": "Pashmina",
+    "infinity scarf": "Infinity scarf",
+    "square scarf": "Square scarf",
+    "oblong scarf": "Oblong scarf",
+    "scarf": "Scarf",
+    "leather gloves": "Leather gloves",
+    "driving gloves": "Driving gloves",
+    "evening gloves": "Evening gloves",
+    "opera gloves": "Opera gloves",
+    "fingerless gloves": "Fingerless gloves",
+    "gloves": "Gloves",
 }
 
 
