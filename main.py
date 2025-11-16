@@ -431,12 +431,41 @@ async def update_metafields(product_id: int, product_data: Dict) -> Dict:
     }
 
 # ============================================================================
-# WEBHOOK ENDPOINT
+# WEBHOOK ENDPOINTS
 # ============================================================================
+
+@app.post("/webhooks/products")
+async def webhook_products(request: Request):
+    """Handle product webhook from Shopify (primary endpoint)"""
+    body = await request.body()
+    
+    # Verify HMAC
+    hmac_header = request.headers.get("X-Shopify-Hmac-Sha256", "")
+    
+    if SHOPIFY_SECRET:
+        computed = base64.b64encode(
+            hmac.new(
+                SHOPIFY_SECRET.encode("utf-8"),
+                body,
+                hashlib.sha256
+            ).digest()
+        ).decode("utf-8")
+        
+        if not hmac.compare_digest(computed, hmac_header):
+            raise HTTPException(status_code=401, detail="Invalid HMAC")
+    
+    # Parse product data
+    product = json.loads(body)
+    product_id = product.get("id")
+    
+    # Process asynchronously
+    result = await update_metafields(product_id, product)
+    
+    return {"status": "processed", "result": result}
 
 @app.post("/webhook/product/update")
 async def webhook_product_update(request: Request):
-    """Handle product update webhook"""
+    """Handle product update webhook (alternate endpoint)"""
     body = await request.body()
     
     # Verify HMAC
@@ -558,7 +587,8 @@ async def health_check():
     return {
         "status": "healthy",
         "endpoints": {
-            "webhook": "/webhook/product/update",
+            "webhook_primary": "/webhooks/products",
+            "webhook_alternate": "/webhook/product/update",
             "bulk_process": "/bulk-process"
         }
     }
