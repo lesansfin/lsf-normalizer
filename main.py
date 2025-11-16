@@ -303,10 +303,13 @@ CONDITION_MAP = {
 
 def extract_condition(text: str) -> str | None:
     t = text.lower()
+    print(f"[DEBUG] Searching for condition in: {t[:100]}...")
     # Sort by length (longest first) to catch specific phrases before generic ones
     for phrase in sorted(CONDITION_MAP.keys(), key=len, reverse=True):
         if phrase in t:
+            print(f"[DEBUG] Found condition via phrase '{phrase}' -> {CONDITION_MAP[phrase]}")
             return CONDITION_MAP[phrase]
+    print(f"[DEBUG] No condition found")
     return None
 
 
@@ -674,10 +677,32 @@ PRODUCT_TYPES = {
 
 def extract_type(text: str) -> str | None:
     t = text.lower()
+    print(f"[DEBUG] Searching for product type in: {t[:100]}...")
+    
     # Sorted by length to match specific types before generic
     for phrase in sorted(PRODUCT_TYPES.keys(), key=len, reverse=True):
-        if phrase in t:
+        # Use word boundaries to avoid matching "ring" in "offering"
+        # For multi-word phrases like "shoulder bag", check exact phrase
+        # For single words, check with word boundaries
+        import re
+        
+        # Escape special regex characters in phrase
+        escaped_phrase = re.escape(phrase)
+        
+        # Check for whole word/phrase matches
+        # Use word boundaries (\b) for single words
+        if ' ' in phrase:
+            # Multi-word phrase: just check if full phrase exists
+            pattern = r'\b' + escaped_phrase.replace(r'\ ', r'\s+') + r'\b'
+        else:
+            # Single word: use word boundaries
+            pattern = r'\b' + escaped_phrase + r'\b'
+        
+        if re.search(pattern, t):
+            print(f"[DEBUG] Found product type via phrase '{phrase}' -> {PRODUCT_TYPES[phrase]}")
             return PRODUCT_TYPES[phrase]
+    
+    print(f"[DEBUG] No product type found")
     return None
 
 
