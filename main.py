@@ -4,6 +4,7 @@ import hashlib
 import base64
 import json
 import re
+import asyncio
 
 from fastapi import FastAPI, Request, HTTPException
 import httpx
@@ -847,6 +848,9 @@ async def write_metafields_to_shopify(product_id: int, metafields: list[dict]):
                 print(f"Error from Shopify metafields: {resp.status_code} {resp.text}")
             else:
                 print(f"Successfully created metafield: {mf['key']}")
+            
+            # INCREASED DELAY: Wait 0.6 seconds between requests (1.66 req/sec to stay under 2/sec limit)
+            await asyncio.sleep(0.6)
 
 
 # ---------- ROUTES ----------
