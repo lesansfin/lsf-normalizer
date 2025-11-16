@@ -11,16 +11,15 @@ import httpx
 
 app = FastAPI()
 
-SHOPIFY_SECRET = os.environ.get("SHOPIFY_SECRET", "")  # Webhook signing secret (hex string from Webhooks UI)
-SHOPIFY_API_TOKEN = os.environ.get("SHOPIFY_API_TOKEN", "")  # Admin API access token (shpat_...)
-SHOPIFY_STORE_DOMAIN = os.environ.get("SHOPIFY_STORE_DOMAIN", "")  # e.g. "hq1p0n-cm.myshopify.com"
+SHOPIFY_SECRET = os.environ.get("SHOPIFY_SECRET", "")
+SHOPIFY_API_TOKEN = os.environ.get("SHOPIFY_API_TOKEN", "")
+SHOPIFY_STORE_DOMAIN = os.environ.get("SHOPIFY_STORE_DOMAIN", "")
 
 # ---------- UTILITIES ----------
 
 def verify_shopify_hmac(request_body: bytes, hmac_header: str) -> bool:
     """Verify webhook came from Shopify."""
     if not SHOPIFY_SECRET:
-        # Fail closed if secret missing
         return False
 
     digest = hmac.new(
@@ -30,7 +29,6 @@ def verify_shopify_hmac(request_body: bytes, hmac_header: str) -> bool:
     ).digest()
     calculated_hmac = base64.b64encode(digest).decode()
     return hmac.compare_digest(calculated_hmac, hmac_header)
-
 
 # ---- EXTRACTORS ----
 
@@ -136,7 +134,6 @@ DESIGNER_SYNONYMS = {
     "gianni versace": "Gianni Versace",
     "miu miu": "Miu Miu",
     "prada sport": "Prada",
-    "gucci": "Gucci",
     "tom ford for gucci": "Gucci",
     "mcq alexander mcqueen": "Alexander McQueen",
     "alexander mcqueen": "Alexander McQueen",
@@ -191,6 +188,7 @@ DESIGNER_SYNONYMS = {
     "tiffany & co": "Tiffany & Co",
     "tiffany and co": "Tiffany & Co",
     "tiffany": "Tiffany & Co",
+    "cartier": "Cartier",
     # Luxury houses
     "lv": "Louis Vuitton",
     "louis vuitton": "Louis Vuitton",
@@ -201,7 +199,6 @@ DESIGNER_SYNONYMS = {
 def extract_designer(text: str) -> str:
     text_l = text.lower()
     
-    # Debug logging
     print(f"[DEBUG] Searching for designer in: {text_l[:100]}...")
     
     # Check synonyms first (most specific)
@@ -211,18 +208,14 @@ def extract_designer(text: str) -> str:
             return canonical
     
     # Check full designer names (case-insensitive)
-    # Sort by length (longest first) to match "Yves Saint Laurent" before "Saint Laurent"
     for designer in sorted(DESIGNERS, key=len, reverse=True):
         designer_lower = designer.lower()
-        # Check if designer name appears as a whole word or part of a phrase
-        # This catches "Escada Couture", "Polo Ralph Lauren", etc.
         if designer_lower in text_l:
             print(f"[DEBUG] Found designer in main list: {designer}")
             return designer
     
     print(f"[DEBUG] No designer found, returning 'unbranded'")
     return "unbranded"
-
 
 CONDITION_MAP = {
     # PRISTINE
@@ -261,9 +254,12 @@ CONDITION_MAP = {
     "well-maintained": "VERY GOOD",
     "hardly worn": "VERY GOOD",
     "looks almost new": "VERY GOOD",
+    "very good pre-owned condition": "VERY GOOD",
+    "very good condition": "VERY GOOD",
     
     # GOOD
     "good used condition": "GOOD",
+    "good vintage condition": "GOOD",
     "moderate wear": "GOOD",
     "some signs of wear": "GOOD",
     "visible wear but still in good shape": "GOOD",
@@ -301,18 +297,17 @@ CONDITION_MAP = {
     "still wearable but shows wear": "FAIR",
 }
 
-
 def extract_condition(text: str) -> str | None:
     t = text.lower()
     print(f"[DEBUG] Searching for condition in: {t[:100]}...")
-    # Sort by length (longest first) to catch specific phrases before generic ones
+    
     for phrase in sorted(CONDITION_MAP.keys(), key=len, reverse=True):
         if phrase in t:
             print(f"[DEBUG] Found condition via phrase '{phrase}' -> {CONDITION_MAP[phrase]}")
             return CONDITION_MAP[phrase]
+    
     print(f"[DEBUG] No condition found")
     return None
-
 
 COLORS = [
     "Black", "White", "Ivory", "Cream", "Beige", "Tan", "Brown", "Chocolate",
@@ -351,19 +346,17 @@ COLORS = [
     "Nickel", "Titanium", "Platinum", "Chrome", "Mercury"
 ]
 
-
 def extract_colors(text: str) -> list[str]:
     t = text.lower()
     found: list[str] = []
-    # Sort by length (longest first) to match "Light Blue" before "Blue"
+    
     for c in sorted(COLORS, key=len, reverse=True):
         if c.lower() in t:
             found.append(c)
-    # dedupe while preserving order
+    
     return list(dict.fromkeys(found))
 
-
-# Product types - sorted longest first for matching
+# Product types with category rollups
 PRODUCT_TYPES = {
     # Dresses (all map to "Dress")
     "babydoll dress": "Dress",
@@ -604,99 +597,94 @@ PRODUCT_TYPES = {
     "slippers": "Slippers",
     
     # Jewelry
-    "statement necklace": "Statement necklace",
-    "pendant necklace": "Pendant necklace",
-    "chain necklace": "Chain necklace",
-    "choker necklace": "Choker necklace",
-    "collar necklace": "Collar necklace",
-    "bib necklace": "Bib necklace",
-    "lariat necklace": "Lariat necklace",
-    "pearl necklace": "Pearl necklace",
-    "rope necklace": "Rope necklace",
+    "statement necklace": "Necklace",
+    "pendant necklace": "Necklace",
+    "chain necklace": "Necklace",
+    "choker necklace": "Necklace",
+    "collar necklace": "Necklace",
+    "bib necklace": "Necklace",
+    "lariat necklace": "Necklace",
+    "pearl necklace": "Necklace",
+    "rope necklace": "Necklace",
     "necklace": "Necklace",
-    "statement earrings": "Statement earrings",
-    "drop earrings": "Drop earrings",
-    "dangle earrings": "Dangle earrings",
-    "chandelier earrings": "Chandelier earrings",
-    "hoop earrings": "Hoop earrings",
-    "stud earrings": "Stud earrings",
-    "clip-on earrings": "Clip-on earrings",
-    "ear cuffs": "Ear cuffs",
+    "statement earrings": "Earrings",
+    "drop earrings": "Earrings",
+    "dangle earrings": "Earrings",
+    "chandelier earrings": "Earrings",
+    "hoop earrings": "Earrings",
+    "stud earrings": "Earrings",
+    "clip-on earrings": "Earrings",
+    "ear cuffs": "Earrings",
     "earrings": "Earrings",
-    "charm bracelet": "Charm bracelet",
-    "bangle bracelet": "Bangle bracelet",
-    "cuff bracelet": "Cuff bracelet",
-    "chain bracelet": "Chain bracelet",
-    "tennis bracelet": "Tennis bracelet",
-    "beaded bracelet": "Beaded bracelet",
-    "friendship bracelet": "Friendship bracelet",
+    "charm bracelet": "Bracelet",
+    "bangle bracelet": "Bracelet",
+    "cuff bracelet": "Bracelet",
+    "chain bracelet": "Bracelet",
+    "tennis bracelet": "Bracelet",
+    "beaded bracelet": "Bracelet",
+    "friendship bracelet": "Bracelet",
     "bracelet": "Bracelet",
-    "statement ring": "Statement ring",
-    "cocktail ring": "Cocktail ring",
-    "signet ring": "Signet ring",
-    "band ring": "Band ring",
-    "stackable ring": "Stackable ring",
-    "midi ring": "Midi ring",
-    "knuckle ring": "Knuckle ring",
+    "statement ring": "Ring",
+    "cocktail ring": "Ring",
+    "signet ring": "Ring",
+    "band ring": "Ring",
+    "stackable ring": "Ring",
+    "midi ring": "Ring",
+    "knuckle ring": "Ring",
+    "diamond ring": "Ring",
+    "solitaire ring": "Ring",
     "ring": "Ring",
-    "vintage brooch": "Vintage brooch",
-    "cameo brooch": "Cameo brooch",
-    "crystal brooch": "Crystal brooch",
-    "floral brooch": "Floral brooch",
-    "animal brooch": "Animal brooch",
+    "vintage brooch": "Brooch",
+    "cameo brooch": "Brooch",
+    "crystal brooch": "Brooch",
+    "floral brooch": "Brooch",
+    "animal brooch": "Brooch",
     "brooch": "Brooch",
-    "enamel pin": "Enamel pin",
-    "lapel pin": "Lapel pin",
-    "hat pin": "Hat pin",
+    "enamel pin": "Pin",
+    "lapel pin": "Pin",
+    "hat pin": "Pin",
     "pin": "Pin",
     
     # Accessories
-    "statement belt": "Statement belt",
-    "chain belt": "Chain belt",
-    "leather belt": "Leather belt",
-    "wide belt": "Wide belt",
-    "skinny belt": "Skinny belt",
-    "obi belt": "Obi belt",
-    "corset belt": "Corset belt",
+    "statement belt": "Belt",
+    "chain belt": "Belt",
+    "leather belt": "Belt",
+    "wide belt": "Belt",
+    "skinny belt": "Belt",
+    "obi belt": "Belt",
+    "corset belt": "Belt",
     "belt": "Belt",
-    "silk scarf": "Silk scarf",
-    "cashmere scarf": "Cashmere scarf",
-    "wool scarf": "Wool scarf",
-    "pashmina": "Pashmina",
-    "infinity scarf": "Infinity scarf",
-    "square scarf": "Square scarf",
-    "oblong scarf": "Oblong scarf",
+    "silk scarf": "Scarf",
+    "cashmere scarf": "Scarf",
+    "wool scarf": "Scarf",
+    "pashmina": "Scarf",
+    "infinity scarf": "Scarf",
+    "square scarf": "Scarf",
+    "oblong scarf": "Scarf",
     "scarf": "Scarf",
-    "leather gloves": "Leather gloves",
-    "driving gloves": "Driving gloves",
-    "evening gloves": "Evening gloves",
-    "opera gloves": "Opera gloves",
-    "fingerless gloves": "Fingerless gloves",
+    "leather gloves": "Gloves",
+    "driving gloves": "Gloves",
+    "evening gloves": "Gloves",
+    "opera gloves": "Gloves",
+    "fingerless gloves": "Gloves",
     "gloves": "Gloves",
 }
-
 
 def extract_type(text: str) -> str | None:
     t = text.lower()
     print(f"[DEBUG] Searching for product type in: {t[:100]}...")
     
-    # Sorted by length to match specific types before generic
+    # Use word boundaries to avoid matching "ring" in "offering"
     for phrase in sorted(PRODUCT_TYPES.keys(), key=len, reverse=True):
-        # Use word boundaries to avoid matching "ring" in "offering"
-        # For multi-word phrases like "shoulder bag", check exact phrase
-        # For single words, check with word boundaries
-        import re
-        
         # Escape special regex characters in phrase
         escaped_phrase = re.escape(phrase)
         
         # Check for whole word/phrase matches
-        # Use word boundaries (\b) for single words
         if ' ' in phrase:
-            # Multi-word phrase: just check if full phrase exists
+            # Multi-word phrase: check if full phrase exists with word boundaries
             pattern = r'\b' + escaped_phrase.replace(r'\ ', r'\s+') + r'\b'
         else:
-            # Single word: use word boundaries
+            # Single word: use word boundaries to avoid partial matches
             pattern = r'\b' + escaped_phrase + r'\b'
         
         if re.search(pattern, t):
@@ -706,11 +694,9 @@ def extract_type(text: str) -> str | None:
     print(f"[DEBUG] No product type found")
     return None
 
-
 def extract_era(text: str) -> str | None:
     t = text.lower()
     
-    # Check for specific eras
     if any(x in t for x in ["1960s", "60s", "sixties", "mod era", "youthquake", "space age", "vintage 60s", "twiggy"]):
         return "1960s"
     if any(x in t for x in ["1970s", "70s", "seventies", "disco era", "boho era", "hippie era", "studio 54", "vintage 70s"]):
@@ -723,6 +709,8 @@ def extract_era(text: str) -> str | None:
         return "2000s / Y2K"
     if any(x in t for x in ["2010s", "10s", "early 2010s", "normcore", "athleisure"]):
         return "2010s"
+    if any(x in t for x in ["1895", "1890s"]):  # Added for vintage pieces like Cartier 1895
+        return "1890s"
     
     # Check for seasons
     if any(x in t for x in ["spring/summer", "spring summer", "s/s", "ss", "resort", "cruise"]):
@@ -731,7 +719,6 @@ def extract_era(text: str) -> str | None:
         return "Fall/Winter"
     
     return None
-
 
 MATERIALS = [
     "Organic cotton", "Pima cotton", "Supima cotton", "Cotton",
@@ -772,18 +759,18 @@ MATERIALS = [
     "Gore-Tex", "Softshell",
     "Down", "Feathers",
     "Fox fur", "Mink fur", "Rabbit fur", "Raccoon fur", "Faux fur",
+    "Platinum", "Gold", "Silver", "Diamond", "950 Platinum",
 ]
-
 
 def extract_materials(text: str) -> list[str]:
     t = text.lower()
     found: list[str] = []
-    # Sort by length to match specific materials before generic
+    
     for m in sorted(MATERIALS, key=len, reverse=True):
         if m.lower() in t:
             found.append(m)
+    
     return list(dict.fromkeys(found))
-
 
 def build_metafields_payload(product_id: int, text: str) -> dict:
     designer = extract_designer(text)
@@ -798,16 +785,13 @@ def build_metafields_payload(product_id: int, text: str) -> dict:
     def add_field(key: str, value, type_: str = "single_line_text_field"):
         if value is None:
             return
-        metafields.append(
-            {
-                "namespace": "custom",
-                "key": key,
-                "type": type_,
-                "value": str(value),
-            }
-        )
+        metafields.append({
+            "namespace": "custom",
+            "key": key,
+            "type": type_,
+            "value": str(value),
+        })
 
-    # Match your metafield definitions
     add_field("designer", designer)
     add_field("condition_rating", condition)
     
@@ -822,13 +806,8 @@ def build_metafields_payload(product_id: int, text: str) -> dict:
 
     return {"product_id": product_id, "metafields": metafields}
 
-
 async def write_metafields_to_shopify(product_id: int, metafields: list[dict]):
-    """
-    NOTE: Shopify's REST API creates product metafields at:
-    POST /admin/api/2025-10/products/{product_id}/metafields.json
-    one metafield at a time, not as a bulk list.
-    """
+    """Write metafields using individual REST API calls with rate limiting."""
     if not SHOPIFY_API_TOKEN or not SHOPIFY_STORE_DOMAIN:
         print("Shopify credentials missing; skipping metafield write.")
         return
@@ -844,14 +823,14 @@ async def write_metafields_to_shopify(product_id: int, metafields: list[dict]):
             payload = {"metafield": mf}
             print(f"Attempting to create metafield: {mf['key']} = {mf['value']}")
             resp = await client.post(base_url, headers=headers, json=payload)
+            
             if resp.status_code >= 300:
                 print(f"Error from Shopify metafields: {resp.status_code} {resp.text}")
             else:
                 print(f"Successfully created metafield: {mf['key']}")
             
-            # INCREASED DELAY: Wait 0.6 seconds between requests (1.66 req/sec to stay under 2/sec limit)
-            await asyncio.sleep(0.6)
-
+            # Rate limiting: 1 second between requests (safe)
+            await asyncio.sleep(1.0)
 
 # ---------- ROUTES ----------
 
@@ -859,13 +838,12 @@ async def write_metafields_to_shopify(product_id: int, metafields: list[dict]):
 def health():
     return {"status": "ok"}
 
-
 @app.post("/webhooks/products")
 async def handle_product_webhook(request: Request):
-    # 1) Get raw body exactly as Shopify sent it
+    # Get raw body exactly as Shopify sent it
     raw_body = await request.body()
 
-    # 2) Get HMAC header (FastAPI lowercases headers internally, but access is case-insensitive)
+    # Get HMAC header
     hmac_header = request.headers.get("x-shopify-hmac-sha256")
     
     # Verify HMAC
@@ -873,7 +851,7 @@ async def handle_product_webhook(request: Request):
         print("HMAC verification failed!")
         raise HTTPException(status_code=401, detail="Invalid HMAC")
 
-    # 3) Parse JSON safely
+    # Parse JSON safely
     try:
         data = json.loads(raw_body.decode("utf-8"))
     except json.JSONDecodeError:
@@ -883,13 +861,13 @@ async def handle_product_webhook(request: Request):
     title = data.get("title") or ""
     body_html = data.get("body_html") or ""
 
-    # crude HTML strip for now
+    # Strip HTML
     body_text = re.sub(r"<[^>]+>", " ", body_html)
     text = f"{title}\n{body_text}"
 
     metafields_payload = build_metafields_payload(product_id, text)
 
-    # write metafields individually under the product
+    # Write metafields individually
     await write_metafields_to_shopify(
         product_id=metafields_payload["product_id"],
         metafields=metafields_payload["metafields"],
