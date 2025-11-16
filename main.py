@@ -220,7 +220,7 @@ def extract_designer(text: str) -> str:
             return designer
     
     print(f"[DEBUG] No designer found, returning 'unbranded'")
-    return "unbranded"
+    return "Unbranded"
 
 
 CONDITION_MAP = {
