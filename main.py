@@ -675,7 +675,9 @@ PRODUCT_TYPES = {
     "waist belt": "Belt",
 
     # Accessories - Sunglasses
-    "sunglasses": "Sunglasses", "Sunglasses": "Sunglasses", "Sunglass": "Sunglasses", "Shades": "Sunglasses, "Eyewear": "Sunglasses",
+    "sunglasses": "Sunglasses", "Sunglasses": "Sunglasses", 
+    "Sunglass": "Sunglasses", "Shades": "Sunglasses", 
+    "Eyewear": "Sunglasses",
     
     # Accessories - Scarves
     "silk scarf": "Scarf", "cashmere scarf": "Scarf",
