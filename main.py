@@ -68,7 +68,7 @@ DESIGNERS = [
     "Cartier", "Tiffany", "Tiffany & Co", "Louis Vuitton", "Bottega Veneta",
     "Filippa K", "Tiger of Sweden", "Weekday",
     "BCBG Max Azria", "Baby Phat", "Heatherette", "Anna Molinari", "DSquared2", "Morgan de Toi",
-    "Dolce & Gabbana", "Dolce and Gabbana", "Levi's", "Levis",
+    "Dolce & Gabbana", "Dolce and Gabbana", "Levi's", "Levis", "Chanel", "Manolo Blahnik", "Timmy Woods"
 ]
 
 # ENHANCED DESIGNER SYNONYMS with many more common variations
@@ -176,6 +176,15 @@ DESIGNER_SYNONYMS = {
     "burberry prorsum": "Burberry", "burberry brit": "Burberry", 
     "burberry london": "Burberry", "burberry sport": "Burberry",
     "burberry check": "Burberry", "burberrys": "Burberry",
+    
+    # London Fog variations
+    "london fog": "London Fog",
+
+     # Jimmy Choo variations
+    "Jimmy Choo": "Jimmy Choo",
+
+     # Chanel variations
+    "Karl Lagerfeld": "Chanel",
     
     # Theory variations
     "theory": "Theory",
@@ -664,6 +673,9 @@ PRODUCT_TYPES = {
     "skinny belt": "Belt", "obi belt": "Belt", 
     "corset belt": "Belt", "belt": "Belt",
     "waist belt": "Belt",
+
+    # Accessories - Sunglasses
+    "sunglasses", "Sunglasses", "Sunglass", "Shades", "Eyewear",
     
     # Accessories - Scarves
     "silk scarf": "Scarf", "cashmere scarf": "Scarf",
